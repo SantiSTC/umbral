@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umbral · Configure board</title>
+<style>
+:root{--bg:#0e1116;--panel:#161b22;--line:#2a313c;--txt:#e6edf3;--mut:#8b949e;--acc:#3fb950;--warn:#f0883e;--blue:#58a6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif}
+main{max-width:560px;margin:0 auto;padding:24px 16px}
+h1{font-size:20px;margin:0 0 4px}
+p{color:var(--mut);margin:4px 0 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
+label{display:block;color:var(--mut);font-size:13px;margin:10px 0 4px}
+input{width:100%;background:#0d1117;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font:inherit}
+button{background:#21262d;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px 14px;cursor:pointer;font:inherit;margin-top:12px}
+button.pri{background:#238636;border-color:#2ea043}
+button:disabled{opacity:.45;cursor:default}
+#status{font-size:18px;font-weight:600}
+#status.ok{color:var(--acc)}#status.bad{color:var(--warn)}
+#link{display:none;margin-top:10px;font-size:17px}
+#link a{color:var(--blue)}
+#log{height:140px;overflow:auto;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--mut);white-space:pre-wrap;background:#0d1117;border-radius:6px;padding:8px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Configure board</h1>
+  <p>Plug the board in over USB, connect it here, and store your WiFi credentials and a node name. Needed once per board. Credentials are sent over the serial port only and saved in the board's NVS.</p>
+
+  <div class="card">
+    <button id="bConn" class="pri" style="margin-top:0">1. Connect board over USB</button>
+    <div style="margin-top:12px">Status: <span id="status">not connected</span></div>
+    <div id="link">Panel: <a id="a" target="_blank"></a></div>
+  </div>
+
+  <div class="card">
+    <label>Node name</label>
+    <input id="name" placeholder="Node A" maxlength="32">
+    <label>WiFi network (2.4 GHz)</label>
+    <input id="ssid" placeholder="Your network name" maxlength="32" autocomplete="off">
+    <label>Password</label>
+    <input id="pass" type="password" maxlength="64" autocomplete="off">
+    <button id="bSend" class="pri" disabled>2. Save to board</button>
+    <button id="bForget" disabled>Forget WiFi</button>
+    <button id="bReset" disabled>Restart board</button>
+  </div>
+
+  <div class="card"><div id="log"></div></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let port, writer;
+
+function setStatus(t, cls){ $('status').textContent=t; $('status').className=cls||''; }
+function log(s){ const l=$('log'); l.textContent=(l.textContent+s+'\n').slice(-5000); l.scrollTop=l.scrollHeight; }
+
+function handle(line){
+  if(!line.startsWith('STATUS,')){ if(line.trim()) log(line); return; }
+  const p = line.split(',');
+  if(p[1]!=='STATS') log(line);
+  switch(p[1]){
+    case 'NEED_WIFI': setStatus('waiting for WiFi credentials','bad'); break;
+    case 'CONNECTING': setStatus('connecting to '+p.slice(2).join(',')+'…'); break;
+    case 'WIFI_FAIL': setStatus('could not connect ('+p[2]+'). Check network and password.','bad'); break;
+    case 'SAVED': setStatus('saved, restarting…'); break;
+    case 'NAME_OK': if(!$('name').value) $('name').value=p.slice(2).join(','); break;
+    case 'WIFI_OK': setStatus('connected · IP '+p[2],'ok');
+      $('a').href='http://'+p[2]+'/'; $('a').textContent='http://'+p[2]+'/'; $('link').style.display='block'; break;
+    case 'STATS': setStatus(`connected · ${p[2]} packets/s · index ${(p[3]/1000).toFixed(3)}`,'ok'); break;
+    case 'ERROR': setStatus('error: '+p[2],'bad'); break;
+  }
+}
+
+async function connect(){
+  if(!('serial' in navigator)){ setStatus('This browser does not support Web Serial. Use Chrome or Edge.','bad'); return; }
+  try{ port = await navigator.serial.requestPort(); await port.open({baudRate:921600}); }
+  catch(e){ setStatus('could not open the port: '+e.message,'bad'); return; }
+  setStatus('connected over USB, waiting for a reply…');
+  $('bConn').disabled=true; $('bSend').disabled=false; $('bForget').disabled=false; $('bReset').disabled=false;
+  try{ await port.setSignals({dataTerminalReady:false, requestToSend:false}); }catch{}
+  const enc = new TextEncoderStream(); enc.readable.pipeTo(port.writable); writer = enc.writable.getWriter();
+  const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable).catch(()=>{});
+  const reader = dec.readable.getReader();
+  setTimeout(()=>writer.write('INFO\n'), 500);
+  let buf='';
+  try{ for(;;){ const {value,done}=await reader.read(); if(done) break; buf+=value; let i;
+      while((i=buf.indexOf('\n'))>=0){ handle(buf.slice(0,i).replace('\r','')); buf=buf.slice(i+1); } } }
+  catch(e){ setStatus('USB connection lost: '+e.message,'bad'); }
+}
+
+async function send(){
+  const name=$('name').value.trim(), ssid=$('ssid').value, pass=$('pass').value;
+  if(!ssid){ setStatus('network name is required','bad'); return; }
+  if(/[\t\n]/.test(ssid+pass+name)){ setStatus('tabs and line breaks are not allowed','bad'); return; }
+  if(name) await writer.write(`NAME\t${name}\n`);
+  await new Promise(r=>setTimeout(r,200));
+  await writer.write(`WIFI\t${ssid}\t${pass}\n`);
+  $('pass').value='';
+}
+
+$('bConn').onclick=connect; $('bSend').onclick=send;
+$('bForget').onclick=()=>writer.write('FORGET\n');
+$('bReset').onclick=async()=>{ log('--- restart ---');
+  // pulse EN/RST via RTS (DTR held low so the board does not enter download mode)
+  await port.setSignals({dataTerminalReady:false, requestToSend:true}); await new Promise(r=>setTimeout(r,150));
+  await port.setSignals({dataTerminalReady:false, requestToSend:false}); };
+</script>
+</body>
+</html>

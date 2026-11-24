@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umbral</title>
+<style>
+:root{
+  --bg:#0b0e13;--panel:#12171e;--panel2:#0e1319;--line:#232b36;--txt:#e6edf3;--mut:#8b949e;--dim:#5b6573;
+  --acc:#3fb950;--warn:#f0883e;--blue:#58a6ff;--hot:#ff6b3d;--quiet:#d29922;--violet:#bc8cff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);background:#0d1117}
+h1{font-size:16px;margin:0 6px 0 0;letter-spacing:.2px}
+h3{font-size:12px;margin:0 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+button{background:#1b222c;color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;font:inherit}
+button:hover{border-color:var(--blue)} button:disabled{opacity:.5;cursor:default}
+button.pri{background:#1f6f35;border-color:#2ea043}
+button.on{border-color:var(--blue);color:var(--blue)}
+input[type=text]{background:#0d1117;color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font:inherit;width:130px}
+.chip{font-size:12px;padding:3px 9px;border-radius:999px;background:#0d1117;border:1px solid var(--line);color:var(--mut)}
+.chip.ok{color:var(--acc);border-color:#23863677}.chip.bad{color:var(--warn);border-color:#f0883e77}
+main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);gap:16px;padding:16px 18px;max-width:1500px;margin:0 auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.side{display:grid;gap:16px;align-content:start}
+.hero{display:flex;align-items:center;gap:16px;padding:14px 16px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);margin-bottom:12px;transition:background .4s,border-color .4s}
+.hero .orb{width:46px;height:46px;border-radius:50%;flex:none;background:#30363d;position:relative}
+.hero .orb::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid currentColor;opacity:0}
+.hero.mov{background:linear-gradient(90deg,#3b1708,#1a1210);border-color:#9a3412}
+.hero.mov .orb{background:var(--hot);color:var(--hot)} .hero.mov .orb::after{animation:ping 1.1s infinite}
+.hero.quiet{background:linear-gradient(90deg,#2e2208,#16130b);border-color:#9e6a03}
+.hero.quiet .orb{background:var(--quiet);color:var(--quiet)} .hero.quiet .orb::after{animation:ping 3s infinite}
+.hero.empty .orb{background:var(--acc);color:var(--acc)}
+@keyframes ping{0%{transform:scale(.8);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+.hero .t1{font-size:22px;font-weight:700;line-height:1.15}
+.hero .t2{color:var(--mut);margin-top:2px}
+.hero .t3{margin-left:auto;text-align:right;color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
+#map{width:100%;display:block;background:#0a0d12;border-radius:10px;touch-action:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.mut{color:var(--mut);font-size:12px}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kv div{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.kv b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.kv span{color:var(--mut);font-size:11px}
+#tl{width:100%;height:34px;display:block;border-radius:6px;background:var(--panel2)}
+.legend{display:flex;gap:12px;margin-top:6px;font-size:11px;color:var(--mut)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+#log{max-height:170px;overflow:auto;font-size:13px}
+#log div{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #1a212a}
+#log time{color:var(--dim);font-variant-numeric:tabular-nums;flex:none}
+.tq{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13px;padding:6px 0;border-bottom:1px solid #1a212a}
+.tq .sub{grid-column:1/3;font-size:11px;color:var(--mut)}
+.tq button{padding:2px 8px;font-size:11px}
+.good{color:#3fb950}.mid{color:#d29922}.bad{color:#f0883e}
+.ln{display:grid;grid-template-columns:1fr 70px;gap:4px 10px;align-items:center;margin-bottom:8px}
+.ln .nm{font-size:13px}.ln .nm small{color:var(--dim)}
+.meter{grid-column:1/3;height:7px;background:var(--panel2);border-radius:4px;overflow:hidden;position:relative}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--blue);transition:width .15s}
+.meter b{position:absolute;top:-2px;bottom:-2px;width:2px;background:#f0883e;left:50%}
+.ln .val{text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--mut)}
+input[type=range]{flex:1;accent-color:var(--blue)}
+label.tg{display:flex;gap:7px;align-items:center;cursor:pointer;color:var(--mut);font-size:12px}
+#msg{color:var(--warn);font-size:13px}
+details summary{cursor:pointer;color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Umbral</h1><span id="demoTag" class="chip" style="display:none;color:#d2a8ff;border-color:#bc8cff77">demo · simulated data</span>
+  <span id="hostBox" style="display:none"><span class="mut">Board IP:</span> <input id="host" type="text"> <button id="bHost">Connect</button></span>
+  <span id="chips"></span>
+  <span id="msg"></span>
+</header>
+<main>
+  <div class="card">
+    <div id="hero" class="hero"><div class="orb"></div><div><div class="t1" id="t1">Connecting…</div><div class="t2" id="t2"></div></div><div class="t3" id="t3"></div></div>
+    <canvas id="map" height="480"></canvas>
+    <div class="row">
+      <button id="bHeat">Time per zone today</button>
+      <button id="bEdit">Move router / boards</button>
+      <span class="mut" id="mapNote"></span>
+    </div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h3>Now</h3>
+      <div class="kv">
+        <div><span>Zone</span><b id="kZone">—</b></div>
+        <div><span>Last activity</span><b id="kLast">—</b></div>
+        <div><span>Active today</span><b id="kToday">—</b></div>
+      </div>
+      <div class="row" style="margin-top:12px"><canvas id="tl" height="34"></canvas></div>
+      <div class="legend"><span><i style="background:#ff6b3d"></i>activity</span><span><i style="background:#d29922"></i>recent activity</span><span><i style="background:#1f3326"></i>no activity</span><span style="margin-left:auto">last 30 min</span></div>
+    </div>
+    <div class="card">
+      <h3>Log</h3>
+      <div id="log"><div class="mut">No events yet.</div></div>
+    </div>
+    <div class="card">
+      <h3>Train zones</h3>
+      <p class="mut" style="margin:0 0 4px">Teach the system what motion looks like in each zone of <b>your</b> room:</p>
+      <ol style="margin:4px 0 0;padding-left:18px;color:var(--mut);font-size:12px">
+        <li>Tap a zone on the floor plan.</li>
+        <li>Tap <b>Train</b> and for 30 s walk <b>inside</b> that zone: back and forth, turn around, sit down and stand up.</li>
+        <li>Repeat for each zone. With 2 trained zones it starts using them.</li>
+      </ol>
+      <div class="row"><button id="bTrain" disabled>Tap a zone on the floor plan</button><button id="bTClr" disabled>Clear zone</button></div>
+      <div class="row" style="margin-top:8px"><button id="bHere" disabled>I'm here (5 s)</button><span class="mut">Wrong zone? Tap the zone you are actually in, then "I'm here" while you move.</span></div>
+      <div id="tres" class="mut" style="margin-top:6px;color:#f0883e"></div>
+      <div id="tq" style="margin-top:10px"></div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+        <b style="font-size:13px">Neural network</b>
+        <p class="mut" style="margin:4px 0 0">Learns from your trained zones. It trains here, in your browser, and benchmarks itself against the nearest-neighbors method. Retrain it after adding or correcting zones.</p>
+        <div class="row"><button id="bNet">Train network</button>
+          <label class="tg">Use <select id="clf" style="background:#0d1117;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font:inherit">
+            <option value="auto">network if trained</option><option value="net">neural network</option><option value="knn">nearest neighbors</option></select></label></div>
+        <div id="netInfo" class="mut" style="margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Links</h3>
+      <div id="lines"></div>
+      <p class="mut" style="margin:2px 0 0">The bar shows how much the signal fluctuates on each link; the orange mark is the threshold.</p>
+    </div>
+    <div class="card">
+      <h3>Settings</h3>
+      <div class="row" style="margin-top:0"><button id="bCal" class="pri">Record baseline noise (15 s, empty room)</button><span class="mut" id="calInfo"></span></div>
+      <div class="row"><span class="mut" style="width:118px">Sensitivity</span><input id="sens" type="range" min="0.5" max="2.5" step="0.1"><b id="sensV" style="width:40px;text-align:right"></b></div>
+      <div class="row"><span class="mut" style="width:118px">"No activity" after</span><input id="hold" type="range" min="1" max="20" step="1"><b id="holdV" style="width:40px;text-align:right"></b></div>
+      <div class="row"><label class="tg"><input type="checkbox" id="useR"> Use the router links for motion and location</label></div>
+      <details style="margin-top:10px"><summary>How it decides</summary>
+        <p class="mut" style="margin:6px 0 0">It only reports what it measures. <b>Activity</b>: some link fluctuates above its threshold (someone is moving nearby). <b>Recent activity</b>: there was motion a short while ago; it does not claim the person is still there, because WiFi cannot tell someone sitting very still from an empty room. <b>No activity</b>: the chosen time has passed without motion. Moved objects (a chair) trigger nothing, because they stay still afterwards.</p>
+      </details>
+    </div>
+  </div>
+</main>
+<script>
+// ======================= configuration =======================
+const Q = new URLSearchParams(location.search);
+const DEMO = Q.has('demo') || /github\.io$/.test(location.hostname);
+const LOCAL = location.protocol === 'file:' && !DEMO;
+const POLL_MS = 200;
+const $ = id => document.getElementById(id);
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch{return d;} },
+                set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch{ return false; } } };
+const now = () => performance.now();
+const fmtClock = t => new Date(t).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const fmtDur = ms => { const s=Math.max(0,Math.round(ms/1000)); if(s<60) return s+' s'; const m=Math.floor(s/60); if(m<60) return m+' min'; return Math.floor(m/60)+' h '+(m%60)+' min'; };
+const today = () => new Date().toISOString().slice(0,10);
+
+// ---------- apartment floor plan (meters; x = width, y = length; living room + kitchen = 3.5 × 6 m) ----------
+const PLAN = {
+  bounds: {x0:-0.15, y0:-0.8, x1:7.75, y1:6.55},
+  outer:  [0, 0, 7.59, 6.42],
+  balcony:[0.88, -0.70, 6.79, 0.0],
+  rooms: [                         // floors: whatever lies between them renders as wall
+    {n:'Bedroom', r:[0.23,0.21,3.74,3.59]},
+    {n:'Living room',     r:[3.86,0.21,7.34,4.26], sense:true},
+    {n:'Kitchen',     r:[4.39,4.26,7.34,6.21], sense:true},
+    {n:'Entrance',    r:[2.34,3.69,3.74,6.21]},
+    {n:'Bathroom',       r:[0.23,4.10,2.24,6.18]},
+    {n:'',           r:[0.40,3.59,1.88,3.94]},            // closet
+  ],
+  openings: [[3.74,3.69,3.86,4.26],[3.86,4.10,4.39,4.26],  // entrance ↔ living room
+             [2.92,3.59,3.67,3.69],                        // bedroom door
+             [2.24,4.16,2.34,4.80],                        // bathroom door
+             [2.68,6.21,3.44,6.42]],                       // front door
+  windows: [[1.35,3.36],[4.66,6.67]],
+  furniture: [
+    {r:[5.38,4.36,7.34,4.77], t:'counter'}, {r:[4.45,5.60,5.25,6.21], t:'fridge'},
+    {r:[5.27,5.80,7.32,6.21], t:'stove'},  {r:[0.24,5.57,2.22,6.18], t:'bathtub'},
+  ],
+};
+const SENSE = PLAN.rooms.filter(r=>r.sense).map(r=>r.r);
+const inSense = (x,y) => SENSE.some(([x0,y0,x1,y1]) => x>=x0 && x<=x1 && y>=y0 && y<=y1);
+const SB = {x0:Math.min(...SENSE.map(r=>r[0])), y0:Math.min(...SENSE.map(r=>r[1])), x1:Math.max(...SENSE.map(r=>r[2])), y1:Math.max(...SENSE.map(r=>r[3]))};
+
+
+
+const ZONES = [
+  {id:'z1', n:'Window left', r:[3.86,0.21,5.60,2.235]},
+  {id:'z2', n:'Window right', r:[5.60,0.21,7.34,2.235]},
+  {id:'z3', n:'Center left',  r:[3.86,2.235,5.60,4.26]},
+  {id:'z4', n:'Center right', r:[5.60,2.235,7.34,4.26]},
+  {id:'z5', n:'Kitchen left',  r:[4.39,4.26,5.865,6.21]},
+  {id:'z6', n:'Kitchen right', r:[5.865,4.26,7.34,6.21]},
+  {id:'z8', n:'Bedroom',   r:[0.23,0.21,3.74,3.59], onlyTrained:true},   // training only (no link crosses it)
+];
+const zoneAt = p => p ? ZONES.find(z => p.x>=z.r[0] && p.x<=z.r[2] && p.y>=z.r[1] && p.y<=z.r[3]) : null;
+
+let pos   = store.get('pos3', {R:{x:3.55,y:1.87}, A:{x:5.5,y:6.0}, B:{x:6.95,y:0.55}});
+let sens  = store.get('h_sens', 1);
+let holdMin = store.get('h_hold2', 3);
+let useRouter = store.get('h_useR', true);
+
+// ======================= boards =======================
+const boards = {};
+function boardList(){ return Object.values(boards).filter(b=>b.d).sort((a,b)=>a.d.name.localeCompare(b.d.name)); }
+function boardFor(role){
+  const l = boardList(), roles = store.get('roles', {});
+  if(l.length===2){ if(roles[l[0].d.name]!=='A' || roles[l[1].d.name]!=='B') store.set('roles', {[l[0].d.name]:'A', [l[1].d.name]:'B'}); return role==='A' ? l[0] : l[1]; }
+  if(l.length===1){ const r = roles[l[0].d.name] || 'A'; return r===role ? l[0] : undefined; }
+}
+const nm = r => { const b = boardFor(r); return b ? b.d.name : (r==='A'?'Placa A':'Placa B'); };
+async function getData(host){
+  if(DEMO) return SIM.data(host);
+  const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 1500);
+  try{ const r = await fetch(`http://${host}/data`, {cache:'no-store', signal:ctl.signal}); return await r.json(); }
+  finally{ clearTimeout(to); }
+}
+const polling = new Set();
+async function poll(host){
+  polling.add(host);
+  const b = boards[host] || (boards[host] = {host});
+  try{ b.d = await getData(host); b.ok = true; b.seen = now();
+       const p = b.d.peer; if(p && p.ip && p.age_ms >= 0 && p.age_ms < 5000 && !polling.has(p.ip)) poll(p.ip); }
+  catch(e){ b.ok = false; if(LOCAL && !b.d) $('msg').textContent = `Can't reach ${host}. Is the IP right? (If it is, open the panel from http://${host}/)`; }
+  setTimeout(()=>poll(host), POLL_MS);
+}
+
+// measured blocks: who receives what
+const BLOCKS = [{id:'RA', role:'A', link:'router'}, {id:'RB', role:'B', link:'router'},
+                {id:'BA', role:'A', link:'peer'},   {id:'AB', role:'B', link:'peer'}];
+// geometric links: router→A, router→B, A↔B (average of both directions)
+const LINES = [{id:'RA', a:'R', b:'A', blocks:['RA'], router:true,  label:()=>`Router → ${nm('A')}`},
+               {id:'RB', a:'R', b:'B', blocks:['RB'], router:true,  label:()=>`Router → ${nm('B')}`},
+               {id:'AB', a:'A', b:'B', blocks:['AB','BA'], router:false, label:()=>`${nm('A')} ↔ ${nm('B')}`}];
+const lineOn = l => !l.router || useRouter;
+
+function readBlocks(){
+  const out = {};
+  for(const k of BLOCKS){
+    const b = boardFor(k.role), x = b && b.ok && b.d.links ? b.d.links.find(l=>l.id===k.link) : null;
+    if(x && x.pps >= 5 && x.m) out[k.id] = {m2:x.m[2], m3:x.m[3], p: x.p ? x.p.map(v=>v/1000) : null, s: x.s ? x.s.map(v=>v/10000) : null, pps:x.pps};
+  }
+  return out;
+}
+
+// ======================= calibration =======================
+// cal = { noise:{block:{m2,m3}}, base:{block:{mean,std,act}}, devThr }
+let cal = store.get('h_cal', null);
+let calBuf = null;
+function calibrate(){
+  calBuf = []; const btn = $('bCal'); btn.disabled = true; let s = 15;
+  const iv = setInterval(()=>{ btn.textContent = `Recording baseline noise… ${s}`; s--;
+    if(s >= 0) return; clearInterval(iv); const xs = calBuf; calBuf = null;
+    btn.textContent = 'Record baseline noise (15 s, empty room)'; btn.disabled = false;
+    if(xs.length < 40){ $('msg').textContent = 'Not enough data: are both boards powered on?'; return; }
+    const stat = a => { const m=a.reduce((x,y)=>x+y,0)/a.length; return [m, Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/a.length)]; };
+    const c = {noise:{}, base:{}, devThr:null, t:Date.now()};
+    for(const k of BLOCKS){
+      const rows = xs.map(x=>x[k.id]).filter(Boolean); if(rows.length < 30) continue;
+      const [a2,s2] = stat(rows.map(r=>r.m2)), [a3,s3] = stat(rows.map(r=>r.m3));
+      c.noise[k.id] = {m2: Math.max(a2+4*s2, a2*1.35), m3: Math.max(a3+4*s3, a3*1.35)};
+      const ps = rows.map(r=>r.p).filter(Boolean);
+      if(ps.length > 20){
+        const mean = new Array(64).fill(0), std = new Array(64).fill(0);
+        for(const p of ps) for(let i=0;i<64;i++) mean[i]+=p[i]/ps.length;
+        for(const p of ps) for(let i=0;i<64;i++) std[i]+=(p[i]-mean[i])**2/ps.length;
+        for(let i=0;i<64;i++) std[i]=Math.sqrt(std[i]);
+        const act=[]; for(let i=0;i<64;i++) if(mean[i]>0.2) act.push(i);
+        c.base[k.id] = {mean, std, act};
+      }
+      const ss = rows.map(r=>r.s).filter(Boolean);
+      if(ss.length > 20){
+        const pooled = ss.map(pool32), N = new Array(32).fill(null);
+        for(let j=0;j<32;j++){ const col = pooled.map(v=>v[j]).filter(v=>v!==null); if(col.length < ss.length*0.8) continue;
+          const [m,sd] = stat(col); N[j] = Math.max(m + 3*sd, 0.003); }
+        (c.snoise = c.snoise || {})[k.id] = N;
+      }
+    }
+    cal = c;
+    const devs = xs.map(x=>peerDev(x)).filter(v=>v!==null);
+    if(devs.length > 20){ const [m,sd] = stat(devs); cal.devThr = m + 4*sd + 0.25; }
+    store.set('h_cal', cal);
+    rebuildTrained(); evalQuality();
+    resetState('Baseline noise recorded');
+    $('msg').textContent = `Done: ${Object.keys(cal.noise).length} of 4 measurements calibrated.`;
+  }, 1000);
+}
+// how far the board-to-board signal deviates from the empty-room fingerprint (in standard deviations)
+function peerDev(s){
+  if(!cal) return null; let a=0, n=0;
+  for(const id of ['AB','BA']){ const B = cal.base[id], x = s[id]; if(!B || !x || !x.p) continue;
+    for(const i of B.act){ const z = (x.p[i]-B.mean[i])/(B.std[i]+0.05); a+=z*z; n++; } }
+  return n ? Math.sqrt(a/n) : null;
+}
+function rebase(samples){
+  // takes the current signal (average of the latest readings) as the new empty-room fingerprint
+  if(!cal || !samples.length) return;
+  for(const id of ['AB','BA']){ const B = cal.base[id]; if(!B) continue;
+    const ps = samples.map(s=>s[id] && s[id].p).filter(Boolean); if(!ps.length) continue;
+    for(const i of B.act) B.mean[i] = ps.reduce((a,p)=>a+p[i],0)/ps.length; }
+  store.set('h_cal', cal);
+}
+
+// ======================= motion per link =======================
+const LS = {}; for(const l of LINES) LS[l.id] = {ratio:0, hist:[], act:false, a:0};
+function lineRatio(l, s){
+  // ratio to threshold: >1 = something is moving near this link
+  const rs = [];
+  for(const id of l.blocks){ const x = s[id], N = cal && cal.noise[id]; if(!x || !N) continue;
+    rs.push(Math.max(x.m2/N.m2, x.m3/N.m3) * sens); }
+  return rs.length ? rs.reduce((a,b)=>a+b,0)/rs.length : null;
+}
+
+// ======================= state =======================
+const ST = { state:'idle', since:now(), lastMove:0, recent:[], zs:{}, zone:null, zone2:null };
+for(const z of ZONES) ST.zs[z.id] = 0;
+let zoneTime = store.get('h_zt_'+today(), {});
+let events = store.get('h_events', []);
+let timeline = [];          // one value per second: 0 idle, 1 recent, 2 active
+let occToday = store.get('h_occ', {d:today(), ms:0});
+let heat = store.get('h_heat_'+today(), null);
+const HN = 40, HM = Math.round(HN*(SB.y1-SB.y0)/(SB.x1-SB.x0));
+if(!heat || heat.length !== HN*HM) heat = new Array(HN*HM).fill(0);
+
+function addEvent(txt, kind){
+  events.unshift({t:Date.now(), txt, kind}); events = events.slice(0, 60); store.set('h_events', events);
+}
+function resetState(why){ ST.state='idle'; ST.since=now(); ST.zone=null; ST.zone2=null; for(const z of ZONES) ST.zs[z.id]=0; if(why) addEvent(why,'info'); }
+function setState(s, why){
+  if(s === ST.state) return;
+  const prev = ST.state; ST.state = s; ST.since = now();
+  const z = ST.zone;
+  if(prev==='idle' && s==='active') addEvent(`Activity${z?' · '+z.n:''}`, 'in');
+  if(s==='idle' && why) addEvent(why, 'out');
+}
+
+function tick(){
+  const s = readBlocks(), t = now();
+  if(calBuf) { calBuf.push(s); return; }
+  ST.recent.push(s); if(ST.recent.length > 25) ST.recent.shift();
+  if(!cal){ return; }
+
+  // 1) motion per link, rejecting isolated spikes
+  let anyAct = false;
+  for(const l of LINES){
+    const L_ = LS[l.id], r = lineRatio(l, s);
+    if(r === null || !lineOn(l)){ L_.ratio = 0; L_.hist = []; L_.act = false; L_.a = 0; continue; }
+    L_.ratio = r; L_.hist.push(r); if(L_.hist.length > 5) L_.hist.shift();
+    const over = L_.hist.filter(v=>v>1).length, need = l.router ? 4 : 3;
+    L_.act = over >= need;
+    const mean = L_.hist.reduce((a,b)=>a+b,0)/L_.hist.length;
+    const target = L_.act ? Math.min(1, 0.35 + (mean-1)/1.5) : 0;
+    L_.a = L_.a*0.6 + target*0.4;
+    if(L_.act) anyAct = true;
+  }
+
+  // 2) likely zone while there is motion (not a point: the system lacks that precision)
+  // during training, gentle motion on any link is enough
+  if(trainBuf && LINES.some(l => lineOn(l) && LS[l.id].ratio > 0.8)) trainBuf.push(rawFeat(s));
+  if(anyAct){
+    const zp = (chooseNet() && netProbs(s)) || knnProbs(s) || zoneProbs();
+    if(zp){ for(const z of ZONES) ST.zs[z.id] = ST.zs[z.id]*0.6 + zp[z.id]*0.4;
+            const r = rankZones(); ST.zone = r[0]; ST.zone2 = r[1];
+            if(ST.zone) zoneTime[ST.zone.id] = (zoneTime[ST.zone.id]||0) + POLL_MS; }
+    ST.lastMove = t;
+  }
+
+  // 3) states (only what is measured, no assumptions):
+  //    'active' = activity right now
+  //    'recent' = activity less than holdMin minutes ago; does not claim someone is still there
+  //    'idle'   = no activity for more than holdMin minutes
+  if(!anyAct && t - ST.lastMove > 2000) liveWin = [];
+  if(anyAct) setState('active');
+  else if(ST.state === 'active' && t - ST.lastMove > 2000) setState('recent');
+  if(ST.state === 'recent' && t - ST.lastMove > holdMin*60000){ setState('idle', `No activity for ${holdMin} min`); }
+  if(ST.state === 'idle'){ for(const z of ZONES) ST.zs[z.id] *= 0.9; }
+  // 5) statistics (time with actual activity)
+  if(ST.state === 'active'){
+    if(occToday.d !== today()) occToday = {d:today(), ms:0};
+    occToday.ms += POLL_MS;
+  }
+
+}
+setInterval(()=>{ timeline.push(ST.state==='active'?2:ST.state==='recent'?1:0); if(timeline.length>1800) timeline.shift(); }, 1000);
+setInterval(()=>{ store.set('h_occ', occToday); store.set('h_zt_'+today(), zoneTime); if(cal) store.set('h_cal', cal); }, 15000);
+
+// simple tomography: active links boost their ellipse, quiet links subtract theirs
+const CN = 46, CM = Math.round(CN*(SB.y1-SB.y0)/(SB.x1-SB.x0));
+let cloudImg = new Float32Array(CN*CM), cloudMax = 0;
+function locate(){
+  const ls = LINES.filter(l => lineOn(l) && LS[l.id].hist.length);
+  if(!ls.some(l=>LS[l.id].act)) return null;
+  const sig = 0.45; let max = 0, bi = -1;
+  for(let j=0;j<CM;j++) for(let i=0;i<CN;i++){
+    const x = SB.x0+(i+0.5)/CN*(SB.x1-SB.x0), y = SB.y0+(j+0.5)/CM*(SB.y1-SB.y0);
+    let v = 0;
+    if(inSense(x,y)){ v = 1;
+      for(const l of ls){ const p=pos[l.a], q=pos[l.b], len=Math.hypot(p.x-q.x,p.y-q.y);
+        const w = Math.exp(-(((Math.hypot(x-p.x,y-p.y)+Math.hypot(x-q.x,y-q.y)-len)/sig)**2)), A = LS[l.id];
+        v *= A.act ? (0.15 + 0.85*w*Math.max(0.4, A.a)) : (1 - 0.75*w); } }
+    cloudImg[j*CN+i] = v; if(v > max){ max = v; bi = j*CN+i; }
+  }
+  cloudMax = max; if(max <= 0) return null;
+  // center of mass of the most likely zone
+  let sx=0, sy=0, sw=0;
+  for(let j=0;j<CM;j++) for(let i=0;i<CN;i++){ const v = cloudImg[j*CN+i]/max; if(v < 0.7) continue;
+    sx += (SB.x0+(i+0.5)/CN*(SB.x1-SB.x0))*v; sy += (SB.y0+(j+0.5)/CM*(SB.y1-SB.y0))*v; sw += v; }
+  return sw ? {x:sx/sw, y:sy/sw} : null;
+}
+
+// ======================= motion-based training =======================
+// Each sample: how much each measurement fluctuated (m2 and m3 of the 4 measurements) while someone walked in that zone.
+let train  = store.get('h_train2', {});    // {zone: [{m:[8], s:{block:[32 ints]}}, ...]}
+const oldTrain = Object.keys(store.get('h_train', {})).length > 0;
+let groups = store.get('h_groups', {});    // {zone: leader zone} for merged zones
+const leader = id => groups[id] || id;
+const leaders = () => ZONES.filter(z => leader(z.id) === z.id);
+const groupName = lid => ZONES.filter(z => leader(z.id) === lid).map(z=>z.n).join(' + ');
+const BIDS = ['RA','RB','BA','AB'];
+// groups the 64 subcarriers in pairs (neighbors move almost identically): 32 values, null if the pair is inactive
+function pool32(sv){ const o = new Array(32); for(let j=0;j<32;j++){ const a=sv[2*j], b=sv[2*j+1]; o[j] = (a>0 && b>0) ? (a+b)/2 : null; } return o; }
+function rawFeat(s){
+  const m = []; for(const id of BIDS){ const x=s[id]; m.push(x?x.m2:null, x?x.m3:null); }
+  const sg = {}; for(const id of BIDS){ const x=s[id]; if(x && x.s) sg[id] = pool32(x.s).map(v => v===null ? null : Math.round(v*10000)); }
+  return {m, s:sg};
+}
+const useSig = () => !!(cal && cal.snoise && Object.keys(cal.snoise).length);
+function featOf(raw){
+  // ratio to baseline noise, log scale; separates "pattern" (where it fluctuates) from "intensity"
+  const v = [];
+  if(useSig()){
+    // per-subcarrier signature: 4 measurements x 32 pairs
+    for(let b=0;b<4;b++){ const id = BIDS[b], N = cal.snoise[id], sv = raw.s && raw.s[id], router = b<2;
+      for(let j=0;j<32;j++){ const x = sv ? sv[j] : null, n = N ? N[j] : null;
+        v.push(x==null || !n || (router && !useRouter) ? null : Math.log(1 + (x/10000)/n)); } }
+  } else {
+    for(let b=0;b<4;b++){ const N = cal && cal.noise[BIDS[b]], router = b<2;
+      for(let k=0;k<2;k++){ const x = raw.m[b*2+k], n = N ? (k ? N.m3 : N.m2) : null;
+        v.push(x==null || !n || (router && !useRouter) ? null : Math.log(1 + x/n)); } }
+  }
+  const ok = v.filter(x=>x!==null); if(ok.length < 2) return null;
+  const mean = ok.reduce((a,b)=>a+b,0)/ok.length;
+  return {rel: v.map(x => x===null ? null : x-mean), mean};
+}
+function fdist(a, b){
+  if(a.rel.length !== b.rel.length) return Infinity;
+  let s2=0, n=0; for(let i=0;i<a.rel.length;i++){ if(a.rel[i]===null || b.rel[i]===null) continue; const dd=a.rel[i]-b.rel[i]; s2+=dd*dd; n++; }
+  if(!n) return Infinity; return Math.sqrt(s2/n) + 0.35*Math.abs(a.mean-b.mean);
+}
+let trainedSet = [];   // [{f, lid, zid}]
+function rebuildTrained(){
+  trainedSet = [];
+  for(const zid in train) for(const raw of train[zid]){ const f = featOf(raw); if(f) trainedSet.push({f, lid: leader(zid), zid}); }
+}
+const trainedLeaders = () => new Set(trainedSet.map(x=>x.lid)).size;
+// ======================= neural network (plain JS, no libraries) =======================
+// Input: the motion signature of each measurement at that instant (the panel already smooths zones over time).
+const WIN_N = 1, HID = 32;   // measured: looking at more than one instant hurts (mixes moments of crossing between zones)
+let net = store.get('h_net', null);          // {W1,b1,W2,b2,mu,sd,cls,D,acc,accKnn,n,ver,t}
+let clfMode = store.get('h_clf', 'auto');
+let netStale = false;
+function vecOf(f){ const v = f.rel.map(x => x===null ? 0 : x); v.push(f.mean); return v; }
+function windowVec(vs){
+  const D = vs[0].length, mean = new Array(D).fill(0), mx = new Array(D).fill(-Infinity);
+  for(const v of vs) for(let i=0;i<D;i++){ mean[i] += v[i]/vs.length; if(v[i] > mx[i]) mx[i] = v[i]; }
+  return mean;
+}
+function buildDataset(){
+  // per leader zone, in recording order; the last 20% of each zone is held out for testing
+  const tr = [], te = [];
+  for(const zid in train){ const lid = leader(zid), arr = train[zid];
+    const fs = arr.map(featOf); const vs = fs.map(f => f ? vecOf(f) : null);
+    const cut = arr.length >= 15 ? Math.floor(arr.length*0.8) : arr.length;
+    for(let i=0;i<arr.length;i++){ if(!vs[i]) continue;
+      const w = []; for(let j=Math.max(0,i-WIN_N+1);j<=i;j++) if(vs[j]) w.push(vs[j]);
+      const item = {x: windowVec(w), y: lid, f: fs[i]};
+      (i < cut ? tr : te).push(item); } }
+  return {tr, te};
+}
+const randn = () => { let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+function initNet(D, K){
+  const W1 = Array.from({length:D*HID}, () => randn()*Math.sqrt(2/D)), b1 = new Array(HID).fill(0);
+  const W2 = Array.from({length:HID*K}, () => randn()*Math.sqrt(2/HID)), b2 = new Array(K).fill(0);
+  return {W1:new Float32Array(W1), b1:new Float32Array(b1), W2:new Float32Array(W2), b2:new Float32Array(b2), D, K};
+}
+function forward(m, x, keep){
+  const h = new Float32Array(HID);
+  for(let j=0;j<HID;j++){ let s = m.b1[j]; for(let i=0;i<m.D;i++) s += x[i]*m.W1[i*HID+j]; h[j] = s > 0 ? s : 0; }
+  const o = new Float32Array(m.K); let mx = -Infinity;
+  for(let k=0;k<m.K;k++){ let s = m.b2[k]; for(let j=0;j<HID;j++) s += h[j]*m.W2[j*m.K+k]; o[k] = s; if(s > mx) mx = s; }
+  let z = 0; for(let k=0;k<m.K;k++){ o[k] = Math.exp(o[k]-mx); z += o[k]; } for(let k=0;k<m.K;k++) o[k] /= z;
+  return keep ? {h, o} : o;
+}
+async function trainMLP(X, Y, K, epochs, onProg){
+  const D = X[0].length, m = initNet(D, K), P = ['W1','b1','W2','b2'];
+  const M = {}, V = {}; for(const k of P){ M[k] = new Float32Array(m[k].length); V[k] = new Float32Array(m[k].length); }
+  const lr = 0.003, l2 = 1e-4, B = 32; let step = 0;
+  const idx = X.map((_,i)=>i);
+  for(let ep=0; ep<epochs; ep++){
+    for(let i=idx.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [idx[i],idx[j]] = [idx[j],idx[i]]; }
+    for(let b0=0; b0<idx.length; b0+=B){
+      const G = {}; for(const k of P) G[k] = new Float32Array(m[k].length);
+      const bs = Math.min(B, idx.length-b0);
+      for(let bi=0; bi<bs; bi++){ const n = idx[b0+bi], x = X[n], {h, o} = forward(m, x, true);
+        const dO = new Float32Array(K); for(let k=0;k<K;k++) dO[k] = (o[k] - (k===Y[n]?1:0))/bs;
+        const dH = new Float32Array(HID);
+        for(let j=0;j<HID;j++){ let s = 0; for(let k=0;k<K;k++){ G.W2[j*K+k] += h[j]*dO[k]; s += m.W2[j*K+k]*dO[k]; } dH[j] = h[j] > 0 ? s : 0; }
+        for(let k=0;k<K;k++) G.b2[k] += dO[k];
+        for(let i=0;i<D;i++){ const xi = x[i]; if(!xi) continue; for(let j=0;j<HID;j++) G.W1[i*HID+j] += xi*dH[j]; }
+        for(let j=0;j<HID;j++) G.b1[j] += dH[j];
+      }
+      step++;
+      for(const k of P){ const w = m[k], g = G[k], mm = M[k], vv = V[k], reg = k[0]==='W' ? l2 : 0;
+        for(let i=0;i<w.length;i++){ const gi = g[i] + reg*w[i]; mm[i] = 0.9*mm[i] + 0.1*gi; vv[i] = 0.999*vv[i] + 0.001*gi*gi;
+          w[i] -= lr * (mm[i]/(1-Math.pow(0.9,step))) / (Math.sqrt(vv[i]/(1-Math.pow(0.999,step))) + 1e-8); } }
+    }
+    if(ep % 5 === 4){ onProg && onProg((ep+1)/epochs); await new Promise(r => setTimeout(r, 0)); }
+  }
+  return m;
+}
+function standardize(X){
+  const D = X[0].length, mu = new Array(D).fill(0), sd = new Array(D).fill(0);
+  for(const x of X) for(let i=0;i<D;i++) mu[i] += x[i]/X.length;
+  for(const x of X) for(let i=0;i<D;i++) sd[i] += (x[i]-mu[i])**2/X.length;
+  for(let i=0;i<D;i++) sd[i] = Math.sqrt(sd[i]) || 1;
+  return {mu, sd};
+}
+const applyStd = (x, mu, sd) => x.map((v,i) => (v-mu[i])/sd[i]);
+let netBusy = false;
+async function trainNet(){
+  if(netBusy) return;
+  const {tr, te} = buildDataset(), cls = [...new Set(tr.map(t=>t.y))];
+  if(cls.length < 2 || tr.length < 30){ $('netInfo').textContent = 'At least 2 trained zones are needed.'; return; }
+  netBusy = true; const btn = $('bNet'); btn.disabled = true;
+  const prog = (stage) => f => { btn.textContent = `${stage}… ${Math.round(f*100)}%`; };
+  // 1) train on 80% and evaluate on the unseen 20%
+  const {mu, sd} = standardize(tr.map(t=>t.x));
+  const X = tr.map(t=>applyStd(t.x,mu,sd)), Y = tr.map(t=>cls.indexOf(t.y));
+  let acc = null, accKnn = null;
+  const teOk = te.filter(t => cls.includes(t.y));
+  if(teOk.length >= 10){
+    const m = await trainMLP(X, Y, cls.length, 150, prog('Testing'));
+    let ok = 0; for(const t of teOk){ const o = forward(m, applyStd(t.x,mu,sd)); let b=0; for(let k=1;k<o.length;k++) if(o[k]>o[b]) b=k; if(cls[b]===t.y) ok++; }
+    acc = ok/teOk.length;
+    // nearest neighbors on the same training data, for comparison
+    const trainedBackup = trainedSet; trainedSet = tr.filter(t=>t.f).map(t=>({f:t.f, lid:t.y}));
+    let okK = 0, nK = 0; for(const t of teOk){ if(!t.f) continue; const p = knnOf(t.f); let b=null; for(const k in p) if(!b || p[k]>p[b]) b=k; if(b===t.y) okK++; nK++; }
+    trainedSet = trainedBackup; accKnn = nK ? okK/nK : null;
+  }
+  // 2) train on everything for actual use
+  const all = tr.concat(te.filter(t => cls.includes(t.y)));
+  const st = standardize(all.map(t=>t.x));
+  const mAll = await trainMLP(all.map(t=>applyStd(t.x,st.mu,st.sd)), all.map(t=>cls.indexOf(t.y)), cls.length, 150, prog('Training'));
+  net = {W1:Array.from(mAll.W1), b1:Array.from(mAll.b1), W2:Array.from(mAll.W2), b2:Array.from(mAll.b2), D:mAll.D, K:mAll.K,
+         mu:st.mu, sd:st.sd, cls, acc, accKnn, n:all.length, sig:useSig(), useR:useRouter, t:Date.now()};
+  if(!store.set('h_net', net)) $('msg').textContent = 'Could not save the network in the browser.';
+  netStale = false; netBusy = false; btn.disabled = false; btn.textContent = 'Retrain network';
+  $('msg').textContent = 'Network ready. Try it in normal use; if it seems worse, pick nearest neighbors under "Use".';
+}
+function netUsable(){ return net && net.cls && net.sig === useSig() && net.useR === useRouter && net.cls.every(c => leader(c)===c); }
+function chooseNet(){
+  if(!netUsable()) return false;
+  if(clfMode === 'net') return true;
+  if(clfMode === 'knn') return false;
+  // on full walks (crossing zones) the network beat nearest neighbors, even when it scores lower on "test data"
+  return true;
+}
+let liveWin = [];
+function netProbs(s){
+  const f = featOf(rawFeat(s)); if(!f) return null;
+  liveWin.push(vecOf(f)); if(liveWin.length > WIN_N) liveWin.shift();
+  const m = {W1:net.W1, b1:net.b1, W2:net.W2, b2:net.b2, D:net.D, K:net.K};
+  const x = windowVec(liveWin); if(x.length !== net.D) return null;
+  const o = forward(m, applyStd(x, net.mu, net.sd));
+  const out = {}; for(const z of ZONES) out[z.id] = 0; net.cls.forEach((c,i) => out[c] = o[i]);
+  return out;
+}
+function renderNet(){
+  const el = $('netInfo'); let h = '';
+  if(!net) h = 'Not trained yet.';
+  else {
+    const when = new Date(net.t).toLocaleString('en-US',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    h = `Trained ${when} on ${net.n} windows. `;
+    if(net.acc !== null) h += `On test data: network ${Math.round(net.acc*100)}%, neighbors ${net.accKnn!==null?Math.round(net.accKnn*100)+'%':'—'} (optimistic: they resemble the training data; the real test is using it). `;
+    if(!netUsable()) h += '<span class="bad">Zones or settings changed: retrain it.</span> ';
+    else if(netStale) h += '<span class="mid">There is new training data: retraining is recommended.</span> ';
+    h += `Currently using: <b>${chooseNet() ? 'neural network' : 'nearest neighbors'}</b>.`;
+  }
+  if(el.dataset.h !== h){ el.innerHTML = h; el.dataset.h = h; }
+}
+
+function knnProbs(s, exclude){
+  const f = featOf(rawFeat(s)); if(!f || trainedLeaders() < 2) return null;
+  return knnOf(f);
+}
+function knnOf(f, skip){
+  const c = [];
+  for(const x of trainedSet){ if(x === skip) continue; c.push([fdist(f, x.f), x.lid]); }
+  c.sort((a,b)=>a[0]-b[0]);
+  const K = Math.min(9, c.length), m = {}; for(const z of ZONES) m[z.id] = 0;
+  for(let i=0;i<K;i++) m[c[i][1]] += 1/K;
+  return m;
+}
+// how well each zone can be told apart (leave-one-out)
+let quality = {};
+function evalQuality(){
+  quality = {};
+  if(trainedLeaders() < 2) return;
+  const res = {};
+  for(const x of trainedSet){ const p = knnOf(x.f, x); let best=null; for(const k in p) if(!best || p[k] > p[best]) best = k;
+    (res[x.lid] = res[x.lid] || {n:0, ok:0, conf:{}}); res[x.lid].n++;
+    if(best === x.lid) res[x.lid].ok++; else res[x.lid].conf[best] = (res[x.lid].conf[best]||0)+1; }
+  for(const lid in res){ const r = res[lid]; let cz=null; for(const k in r.conf) if(!cz || r.conf[k] > r.conf[cz]) cz = k;
+    quality[lid] = {acc: r.ok/r.n, n: r.n, conf: cz, confRate: cz ? r.conf[cz]/r.n : 0}; }
+}
+function saveTrain(){ netStale = true; if(!store.set('h_train2', train)) $('msg').textContent = 'The browser could not save the training data (out of space).'; store.set('h_groups', groups); rebuildTrained(); evalQuality(); }
+
+let selZone = null, trainBuf = null, trainZone = null, training = false;
+function startTraining(){
+  if(!selZone || !cal || training) return;
+  training = true;
+  const z = selZone, b = $('bTrain'); b.disabled = true; let c = 3; b.textContent = `Go to "${z.n}"… 3`;
+  const cd = setInterval(()=>{ c--; if(c > 0){ b.textContent = `Go to "${z.n}"… ${c}`; return; } clearInterval(cd); trainBuf = []; trainZone = z; let s = 30;
+    b.textContent = `Recording "${z.n}": keep moving… 30 · 0 samples`;
+    const iv = setInterval(()=>{ s--; if(s > 0){ b.textContent = `Recording "${z.n}": keep moving… ${s} · ${trainBuf.length} samples`; return; } clearInterval(iv);
+      const got = trainBuf; trainBuf = null; trainZone = null; training = false;
+      if(got.length < 5){ $('msg').textContent = `"${z.n}" not saved: almost no motion detected (${got.length} samples). Move more or raise the sensitivity.`; }
+      else { const arr = (train[z.id] || []).concat(got); while(arr.length > 160) arr.shift();
+             train[z.id] = arr; saveTrain();
+             $('msg').textContent = got.length < 15 ? `"${z.n}" saved with few samples (${got.length}): consider repeating it.` : `"${z.n}" trained with ${got.length} samples.`; }
+      $('tres').textContent = $('msg').textContent;
+      trainLabel();
+    }, 1000);
+  }, 1000);
+}
+function correctHere(){
+  if(!selZone || !cal || training) return;
+  training = true; const z = selZone, b = $('bHere'); trainBuf = []; trainZone = z; let s = 5;
+  b.textContent = `Recording "${z.n}"… 5`;
+  const iv = setInterval(()=>{ s--; if(s > 0){ b.textContent = `Recording "${z.n}"… ${s} · ${trainBuf.length}`; return; } clearInterval(iv);
+    const got = trainBuf; trainBuf = null; trainZone = null; training = false;
+    if(got.length >= 3){ const arr = (train[z.id] || []).concat(got); while(arr.length > 160) arr.shift(); train[z.id] = arr; saveTrain();
+      $('msg').textContent = `Correction saved: ${got.length} more samples for "${z.n}".`; }
+    else $('msg').textContent = 'Correction not saved: there was almost no motion. Keep moving while it records.';
+    $('tres').textContent = $('msg').textContent; trainLabel(); }, 1000);
+}
+function trainLabel(){
+  const b = $('bTrain'), h = $('bHere');
+  h.disabled = training || !selZone || !cal; if(!training) h.textContent = selZone ? `I'm in "${selZone.n}" (5 s)` : 'I\'m here (5 s)';
+  $('bTClr').disabled = !selZone || !(train[selZone.id]||[]).length;
+  if(training){ b.disabled = true; return; }
+  if(!cal){ b.disabled = true; b.textContent = 'Record the baseline noise first'; return; }
+  if(!selZone){ b.disabled = true; b.textContent = 'Tap a zone on the floor plan'; return; }
+  b.disabled = false; b.textContent = `Entrenar "${selZone.n}" (30 s)`;
+}
+function renderQuality(){
+  const rows = ZONES.map(z => {
+    const n = (train[z.id]||[]).length, lid = leader(z.id), isLeader = lid === z.id, q = quality[lid];
+    if(!isLeader) return `<div class="tq"><span>${z.n}</span><span class="mut">merged with ${ZONES.find(x=>x.id===lid).n} <button data-split="${z.id}">split</button></span></div>`;
+    let right = n ? `${n} samples` : '<span class="mut">not trained</span>', sub = '';
+    if(q && n){ const cls = q.acc >= 0.75 ? 'good' : q.acc >= 0.55 ? 'mid' : 'bad';
+      right = `<span class="${cls}">${Math.round(q.acc*100)}% correct</span>`;
+      if(q.conf && q.confRate >= 0.2){ const cn = groupName(q.conf);
+        sub = `<span class="sub">confused with ${cn} (${Math.round(q.confRate*100)}%)${q.acc < 0.6 ? ` · <button data-merge="${z.id}" data-with="${q.conf}">merge</button>` : ''}</span>`; } }
+    return `<div class="tq"><span${selZone===z?' style="color:#58a6ff;font-weight:600"':''}>${groupName(lid)}</span><span>${right}</span>${sub}</div>`;
+  }).join('');
+  const sigInfo = !cal ? '' : useSig() ? 'Using the per-subcarrier signature. ' : '<span class="bad">Re-record the baseline noise to enable the per-subcarrier signature.</span> ';
+  const oldInfo = oldTrain && !Object.keys(train).length ? '<span class="mid">Previous training used an older format: the zones need to be retrained.</span> ' : '';
+  const head = `<p class="mut" style="margin:0 0 4px">${sigInfo}${oldInfo}${trainedLeaders() >= 2 ? 'Using training data for location.' : 'Until 2 zones are trained, location uses geometry only (less accurate).'}</p>`;
+  const html = head + rows;
+  if($('tq').dataset.h !== html){ $('tq').innerHTML = html; $('tq').dataset.h = html; }
+}
+document.addEventListener('click', e => {
+  const m = e.target.dataset && e.target.dataset.merge, w = e.target.dataset && e.target.dataset.with, sp = e.target.dataset && e.target.dataset.split;
+  if(m && w){ const target = leader(w); for(const z of ZONES) if(leader(z.id) === leader(m)) groups[z.id] = target; groups[target] = undefined; delete groups[target]; saveTrain(); }
+  if(sp){ delete groups[sp]; saveTrain(); }
+});
+
+function zoneProbs(){
+  // distributes the "cloud" of active links across the zones
+  locate(); if(cloudMax <= 0) return null;
+  const m = {}; let tot = 0; for(const z of ZONES) m[z.id] = 0;
+  for(let j=0;j<CM;j++) for(let i=0;i<CN;i++){ const v = cloudImg[j*CN+i]; if(v <= 0) continue;
+    const z = zoneAt({x:SB.x0+(i+0.5)/CN*(SB.x1-SB.x0), y:SB.y0+(j+0.5)/CM*(SB.y1-SB.y0)}); if(!z) continue;
+    const w = v*v; m[leader(z.id)] += w; tot += w; }
+  if(!tot) return null; for(const k in m) m[k] /= tot; return m;
+}
+function rankZones(){
+  const r = leaders().sort((a,b)=>ST.zs[b.id]-ST.zs[a.id]);
+  const top = ST.zs[r[0].id] > 0.3 ? r[0] : null;
+  const second = top && ST.zs[top.id] < 0.6 && ST.zs[r[1].id] > 0.25 ? r[1] : null;
+  return [top, second];
+}
+const zoneText = () => !ST.zone ? 'uncertain' : ST.zone2 ? `between ${groupName(ST.zone.id)} and ${groupName(ST.zone2.id)}` : groupName(ST.zone.id);
+
+// ======================= drawing =======================
+const map = $('map'); let edit = false, drag = null, geo = null, showHeat = false;
+$('mapNote') && 0;
+function layout(){
+  const B = PLAN.bounds, bw = B.x1-B.x0, bh = B.y1-B.y0, r = map.getBoundingClientRect(), d = devicePixelRatio||1;
+  const W = Math.round(r.width*d), H = Math.round(Math.min(640, r.width*bh/bw)*d);
+  if(map.width!==W || map.height!==H){ map.width=W; map.height=H; map.style.height=(H/d)+'px'; }
+  const s = Math.min(W/bw, H/bh);
+  geo = {d, s, ox:(W-bw*s)/2 - B.x0*s, oy:(H-bh*s)/2 - B.y0*s};
+}
+const toPx = p => [geo.ox + p.x*geo.s, geo.oy + p.y*geo.s];
+const toM  = (px,py) => ({x:Math.max(0,Math.min(7.59,(px-geo.ox)/geo.s)), y:Math.max(0,Math.min(6.42,(py-geo.oy)/geo.s))});
+const R = ([x0,y0,x1,y1]) => [geo.ox+x0*geo.s, geo.oy+y0*geo.s, (x1-x0)*geo.s, (y1-y0)*geo.s];
+
+
+function drawPlan(g, d){
+  const ink = '#c9d1d9', wall = '#3a4350', floor = '#141a22', senseFloor = '#17202b';
+  // balcony
+  g.fillStyle = '#10151b'; g.fillRect(...R(PLAN.balcony));
+  g.strokeStyle = '#2f3742'; g.lineWidth = 1.5*d; g.strokeRect(...R(PLAN.balcony));
+  // walls: a full block, with the floors drawn on top
+  g.fillStyle = wall; g.fillRect(...R(PLAN.outer));
+  for(const rm of PLAN.rooms){ g.fillStyle = rm.sense ? senseFloor : floor; g.fillRect(...R(rm.r)); }
+  g.fillStyle = senseFloor; for(const o of PLAN.openings.slice(0,2)) g.fillRect(...R(o));
+  g.fillStyle = floor; for(const o of PLAN.openings.slice(2)) g.fillRect(...R(o));
+  // balcony windows
+  g.strokeStyle = '#4f7dc9'; g.lineWidth = 3*d;
+  for(const [x0,x1] of PLAN.windows){ g.beginPath(); g.moveTo(geo.ox+x0*geo.s, geo.oy+0.1*geo.s); g.lineTo(geo.ox+x1*geo.s, geo.oy+0.1*geo.s); g.stroke(); }
+  // 1 m grid, sensed area only
+  g.save(); g.beginPath(); for(const r of SENSE) g.rect(...R(r)); g.clip();
+  g.strokeStyle = '#1f2833'; g.lineWidth = 1;
+  for(let x=Math.ceil(SB.x0);x<SB.x1;x++){ g.beginPath(); g.moveTo(geo.ox+x*geo.s, geo.oy+SB.y0*geo.s); g.lineTo(geo.ox+x*geo.s, geo.oy+SB.y1*geo.s); g.stroke(); }
+  for(let y=Math.ceil(SB.y0);y<SB.y1;y++){ g.beginPath(); g.moveTo(geo.ox+SB.x0*geo.s, geo.oy+y*geo.s); g.lineTo(geo.ox+SB.x1*geo.s, geo.oy+y*geo.s); g.stroke(); }
+  g.restore();
+  // furniture
+  g.strokeStyle = '#3d4654'; g.fillStyle = '#1b222c'; g.lineWidth = 1*d;
+  for(const f of PLAN.furniture){ const rr = R(f.r); g.fillRect(...rr); g.strokeRect(...rr);
+    g.fillStyle = '#5c6673'; g.font = `${10*d}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(f.t, rr[0]+rr[2]/2, rr[1]+rr[3]/2); g.fillStyle = '#1b222c'; }
+  // room names
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for(const rm of PLAN.rooms){ if(!rm.n) continue; const [x,y,w,h] = R(rm.r);
+    g.fillStyle = rm.sense ? '#8b949e' : '#59626e'; g.font = `600 ${(rm.sense?14:12)*d}px system-ui`;
+    const ly = rm.n==='Kitchen' ? y+h*0.42 : rm.n==='Living room' ? y+h*0.5 : y+h/2;
+    g.fillText(rm.n, x+w/2, ly); }
+  g.fillStyle = '#4a525d'; g.font = `600 ${11*d}px system-ui`;
+  const [bx,by,bw2,bh2] = R(PLAN.balcony); g.fillText('Balcony', bx+bw2/2, by+bh2/2);
+  g.textBaseline = 'alphabetic';
+}
+
+
+function drawMap(){
+  layout(); const g = map.getContext('2d'), d = geo.d, t = now();
+  g.clearRect(0,0,map.width,map.height);
+  drawPlan(g, d);
+  const cw = (SB.x1-SB.x0)*geo.s/CN, ch = (SB.y1-SB.y0)*geo.s/CM;
+  // daily heat map: time with activity per zone
+  if(showHeat){
+    const mx = Math.max(1, ...ZONES.map(z=>zoneTime[z.id]||0));
+    for(const z of ZONES){ const v = (zoneTime[z.id]||0)/mx, [x,y,w,h] = R(z.r);
+      if(v > 0){ g.fillStyle = `rgba(188,140,255,${0.08+0.6*v})`; g.fillRect(x+1,y+1,w-2,h-2); }
+      g.fillStyle = '#e6edf3'; g.font = `600 ${12*d}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(leader(z.id)===z.id ? fmtDur(zoneTime[z.id]||0) : '', x+w/2, y+h/2); g.textBaseline = 'alphabetic'; }
+  } else {
+    // zones: color shows how likely each one is
+    for(const z of ZONES){
+      const lid = leader(z.id), [x,y,w,h] = R(z.r), sh = ST.zs[lid], top = ST.zone && ST.zone.id===lid, sec = ST.zone2 && ST.zone2.id===lid;
+      const col = ST.state==='active' ? '255,107,61' : '210,153,34';
+      if(ST.state!=='idle' && sh > 0.08){ g.fillStyle = `rgba(${col},${(ST.state==='active'?0.08:0.05)+0.45*sh})`; g.fillRect(x+1,y+1,w-2,h-2); }
+      g.strokeStyle = (top||sec) && ST.state!=='idle' ? `rgba(${col},.8)` : 'rgba(120,135,155,.18)';
+      g.lineWidth = (top ? 2.2 : 1)*d; g.setLineDash(top||sec ? [] : [4*d,4*d]); g.strokeRect(x+2,y+2,w-4,h-4); g.setLineDash([]);
+      g.textAlign = 'left'; g.textBaseline = 'top'; g.font = `${top?'600 ':''}${11*d}px system-ui`;
+      g.fillStyle = top && ST.state!=='idle' ? '#fff' : '#6b7583';
+      g.fillText(z.n + (ST.state!=='idle' && sh > 0.08 && lid===z.id ? `  ${Math.round(sh*100)}%` : '') + ((train[z.id]||[]).length ? '  ✓' : ''), x+7*d, y+6*d); g.textBaseline = 'alphabetic';
+      if(selZone === z || trainZone === z){ g.strokeStyle = '#58a6ff'; g.lineWidth = 2.5*d; g.strokeRect(x+3,y+3,w-6,h-6); }
+    }
+    // merged zones: draw the shared outline
+    for(const L of leaders()){ const mem = ZONES.filter(z=>leader(z.id)===L.id); if(mem.length < 2) continue;
+      g.strokeStyle = 'rgba(188,140,255,.6)'; g.lineWidth = 1.5*d; g.setLineDash([2*d,3*d]);
+      for(const z of mem){ const [x,y,w,h] = R(z.r); g.strokeRect(x+5,y+5,w-10,h-10); } g.setLineDash([]); }
+  }
+  // links
+  for(const l of LINES){ const [x1,y1]=toPx(pos[l.a]), [x2,y2]=toPx(pos[l.b]), A = LS[l.id], on = lineOn(l);
+    const grad = g.createLinearGradient(x1,y1,x2,y2);
+    const c = !on ? '#2a313b' : A.act ? `rgba(255,107,61,${0.55+0.45*A.a})` : 'rgba(88,166,255,.45)';
+    grad.addColorStop(0,c); grad.addColorStop(1,c);
+    g.strokeStyle = grad; g.lineWidth = (A.act ? 3 : 1.4)*d; g.setLineDash(on?[]:[5*d,5*d]);
+    g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke(); g.setLineDash([]);
+    if(A.act){ // pulse traveling along the link
+      const f = (t/700) % 1; g.fillStyle = 'rgba(255,190,150,.9)'; g.beginPath(); g.arc(x1+(x2-x1)*f, y1+(y2-y1)*f, 3*d, 0, 7); g.fill(); }
+  }
+  // nodes
+  for(const r of ['R','A','B']){
+    const [x,y] = toPx(pos[r]), b = r==='R' ? {ok:true} : boardFor(r);
+    g.fillStyle = r==='R' ? '#d2a8ff' : (b && b.ok ? '#3fb950' : '#6e7681'); g.strokeStyle = '#0a0d12'; g.lineWidth = 2.5*d;
+    g.beginPath(); g.arc(x,y,(edit?10:6.5)*d,0,7); g.fill(); g.stroke();
+    g.fillStyle = '#c9d1d9'; g.font = `600 ${11.5*d}px system-ui`; g.textAlign = r==='R' ? 'right' : 'center';
+    if(r==='R') g.fillText('Router', x-11*d, y+4*d); else g.fillText(nm(r), x, y + (y < geo.oy+3*geo.s ? 21 : -13)*d);
+  }
+}
+
+function drawSide(){
+  const t = now(), hero = $('hero');
+  let cls = 'hero', t1 = '', t2 = '', t3 = '';
+  if(!boardList().length){ t1 = 'Looking for boards…'; t2 = LOCAL ? 'Enter a board IP above.' : ''; }
+  else if(!cal){ t1 = 'Baseline noise not recorded yet'; t2 = 'With the room empty, tap "Record baseline noise" in Settings.'; }
+  else if(ST.state === 'active'){ cls += ' mov'; t1 = ST.zone && ST.zone.id==='z8' && !ST.zone2 ? 'Activity in the bedroom' : 'Activity'; t2 = `Likely zone: ${zoneText()}`; }
+  else if(ST.state === 'recent'){ cls += ' quiet'; t1 = `Activity ${fmtDur(t-ST.lastMove)} ago`; t2 = ST.zone ? `Last zone: ${zoneText()}` : '';
+    t3 = `switches to "no activity"<br>in ${fmtDur(holdMin*60000 - (t-ST.lastMove))}`; }
+  else { cls += ' empty'; t1 = 'No activity'; t2 = ST.lastMove ? `Last activity ${fmtDur(t-ST.lastMove)} ago` : ''; }
+  hero.className = cls; $('t1').textContent = t1; $('t2').textContent = t2; $('t3').innerHTML = t3;
+
+  $('kZone').textContent = ST.state==='idle' || !ST.zone ? '—' : groupName(ST.zone.id);
+  renderQuality(); trainLabel(); renderNet();
+  $('kLast').textContent = ST.lastMove ? fmtDur(t-ST.lastMove) : '—';
+  $('kToday').textContent = fmtDur(occToday.d===today() ? occToday.ms : 0);
+
+  // timeline
+  const c = $('tl'), d = devicePixelRatio||1, r = c.getBoundingClientRect();
+  if(c.width !== Math.round(r.width*d)){ c.width = Math.round(r.width*d); c.height = Math.round(34*d); }
+  const g = c.getContext('2d'), W = c.width, H = c.height; g.clearRect(0,0,W,H);
+  const n = 1800, bw = W/n, base = n - timeline.length;
+  for(let i=0;i<timeline.length;i++){ const v = timeline[i]; g.fillStyle = v===2?'#ff6b3d':v===1?'#d29922':'#1f3326'; g.fillRect((base+i)*bw, v===0?H*0.6:0, bw+0.6, v===0?H*0.4:H); }
+
+  // log
+  const log = $('log');
+  const html = events.length ? events.map(e=>`<div><time>${fmtClock(e.t)}</time><span style="color:${e.kind==='in'?'#ff9b6b':e.kind==='out'?'#7ee2a8':'#8b949e'}">${e.txt}</span></div>`).join('') : '<div class="mut">No events yet.</div>';
+  if(log.dataset.h !== html){ log.innerHTML = html; log.dataset.h = html; }
+
+  // links
+  const lh = LINES.map(l=>{ const A = LS[l.id], on = lineOn(l), w = on ? Math.min(100, A.ratio/2*100) : 0;
+    const pps = l.blocks.map(id=>{ const k = BLOCKS.find(b=>b.id===id), b = boardFor(k.role), x = b&&b.ok&&b.d.links?b.d.links.find(q=>q.id===k.link):null; return x?x.pps:0; }).join(' / ');
+    return `<div class="ln" style="${on?'':'opacity:.4'}"><span class="nm">${l.label()} <small>${pps} paq/s${on?'':' · apagada'}</small></span><span class="val">${on && A.ratio ? A.ratio.toFixed(2) : '—'}</span>
+      <div class="meter"><i style="width:${w}%;background:${A.act?'#ff6b3d':'#58a6ff'}"></i><b></b></div></div>`; }).join('');
+  if($('lines').dataset.h !== lh){ $('lines').innerHTML = lh; $('lines').dataset.h = lh; }
+
+  $('chips').innerHTML = boardList().map(b=>`<span class="chip ${b.ok?'ok':'bad'}">${b.d.name} · ${b.host}</span>`).join(' ') || '';
+  $('calInfo').textContent = cal ? `recorded ${new Date(cal.t).toLocaleString('en-US',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}` : '';
+  $('mapNote').textContent = showHeat ? 'Time with activity today in each zone.' : '';
+}
+function frame(){ drawMap(); drawSide(); requestAnimationFrame(frame); }
+
+// ======================= interaction =======================
+function evPos(e){ const r = map.getBoundingClientRect(); return [(e.clientX-r.left)*geo.d, (e.clientY-r.top)*geo.d]; }
+map.addEventListener('pointerdown', e=>{ const [x,y] = evPos(e);
+  if(!edit){ if(training) return; const m = {x:(x-geo.ox)/geo.s, y:(y-geo.oy)/geo.s}; const z = zoneAt(m); if(z){ selZone = z; trainLabel(); } return; }
+  for(const r of ['R','A','B']){ const [px,py]=toPx(pos[r]); if(Math.hypot(px-x,py-y) < 24*geo.d){ drag=r; map.setPointerCapture(e.pointerId); return; } } });
+map.addEventListener('pointermove', e=>{ if(!drag) return; const [x,y]=evPos(e); pos[drag]=toM(x,y); });
+map.addEventListener('pointerup', ()=>{ if(drag){ drag=null; store.set('pos3',pos); } });
+$('bEdit').onclick = ()=>{ edit=!edit; $('bEdit').classList.toggle('on',edit); $('bEdit').textContent = edit ? 'Done' : 'Move router / boards'; };
+$('bHeat').onclick = ()=>{ showHeat=!showHeat; $('bHeat').classList.toggle('on',showHeat); };
+$('bCal').onclick = calibrate;
+$('bTrain').onclick = startTraining;
+$('bHere').onclick = correctHere;
+$('bNet').onclick = trainNet;
+$('clf').value = clfMode;
+$('clf').onchange = e => { clfMode = e.target.value; store.set('h_clf', clfMode); };
+if(net) $('bNet').textContent = 'Retrain network';
+$('bTClr').onclick = ()=>{ if(selZone){ delete train[selZone.id]; saveTrain(); $('msg').textContent = `Training for "${selZone.n}" cleared.`; trainLabel(); } };
+rebuildTrained(); evalQuality();
+$('sens').value = sens; $('sensV').textContent = sens.toFixed(1)+'×';
+$('sens').oninput = e=>{ sens=+e.target.value; $('sensV').textContent=sens.toFixed(1)+'×'; store.set('h_sens',sens); };
+$('hold').value = holdMin; $('holdV').textContent = holdMin+' min';
+$('hold').oninput = e=>{ holdMin=+e.target.value; $('holdV').textContent=holdMin+' min'; store.set('h_hold2',holdMin); };
+$('useR').checked = useRouter;
+$('useR').onchange = e=>{ useRouter = e.target.checked; store.set('h_useR', useRouter); rebuildTrained(); evalQuality(); };
+
+// ======================= simulation (demo mode only) =======================
+// 120 s scene: empty → enters and walks → sits still → moves the chair and leaves → empty with the chair moved
+const SIM = (() => {
+  let T0 = now();
+  const path = [[3.95,4.15],[4.6,3.2],[5.3,1.4],[6.4,0.9],[6.8,2.0],[5.2,2.7],[5.6,4.9],[6.6,5.4],[6.3,3.1]];
+  const exitPath = [[6.3,3.1],[5.4,3.6],[4.5,3.9],[3.9,4.15]];
+  const lerpPath = (pts, f) => { const n = pts.length-1, k = Math.min(n-1, Math.floor(f*n)), u = f*n-k;
+    return {x: pts[k][0]+(pts[k+1][0]-pts[k][0])*u, y: pts[k][1]+(pts[k+1][1]-pts[k][1])*u}; };
+  const rn = () => { let s=0; for(let i=0;i<4;i++) s+=Math.random(); return (s-2)/0.58; };   // ~N(0,1)
+  const base = {}; for(const id of ['RA','RB','AB','BA']) base[id] = Array.from({length:64},(_,k)=>(k<6||k>58||k===32)?0:1+0.3*Math.sin(k/5+id.charCodeAt(0)+id.charCodeAt(1)));
+  const ends = {RA:['R','A'], RB:['R','B'], BA:['B','A'], AB:['A','B']};
+  const S = { P:null, phase:'', chairMoved:false };
+  function scene(){
+    if(S.forceP){ S.P=S.forceP; S.mv=1; S.phase='training'; S.chairMoved=false; return; }
+    if(S.hold){ S.P=null; S.mv=0; S.phase='idle'; S.chairMoved=false; S.t=0; return; }
+    const t = ((now()-T0)/1000) % 120;
+    if(t < 10){ S.P=null; S.mv=0; S.phase='idle'; S.chairMoved=false; }
+    else if(t < 35){ S.P=lerpPath(path,(t-10)/25); S.mv=1; S.phase='walking'; S.chairMoved=false; }
+    else if(t < 60){ S.P={x:6.3,y:3.1}; S.mv=0.12; S.phase='sitting'; }
+    else if(t < 66){ S.P=lerpPath(exitPath,(t-60)/6); S.mv=1; S.phase='leaving'; S.chairMoved=true; }
+    else { S.P=null; S.mv=0; S.phase='idle_chair'; }
+    S.t = t;
+  }
+  function block(id){
+    const [a,b] = ends[id], p = pos[a], q = pos[b], len = Math.hypot(p.x-q.x,p.y-q.y);
+    let near = 0;
+    if(S.P){ const ex = Math.hypot(S.P.x-p.x,S.P.y-p.y)+Math.hypot(S.P.x-q.x,S.P.y-q.y)-len; near = Math.exp(-((ex/0.6)**2)); }
+    let m2 = 0.030 + 0.003*rn() + 0.05*S.mv*near*(0.7+0.6*Math.random());
+    let m3 = 0.060 + 0.006*rn() + 0.09*S.mv*near*(0.7+0.6*Math.random());
+    const router = id[0]==='R';
+    if(router && Math.random() < 0.05){ m2 *= 3; m3 *= 3; }          // isolated spike: the router switches antennas
+    const pr = base[id].map((v,k)=>{ if(!v) return 0;
+      let d = 0.006*rn();
+      if(S.chairMoved && !router && !S.noChair) d += 0.05*Math.sin(k*0.7+1.3);
+      if(S.P) d += 0.08*Math.exp(-(((Math.hypot(S.P.x-p.x,S.P.y-p.y)+Math.hypot(S.P.x-q.x,S.P.y-q.y)-len)/0.9)**2))*Math.sin(k*0.45+2.3*S.P.x+1.7*S.P.y);
+      return Math.round((v+d)*1000); });
+    const off = id.charCodeAt(0)*0.7 + id.charCodeAt(1)*1.3;
+    const sg = base[id].map((v,k)=>{ if(!v) return 0;
+      let x = 0.010*(1+0.15*rn());
+      if(S.P && S.mv) x += S.mv*0.03*(0.25+near)*(0.5+0.5*Math.sin(k*0.37 + 2.1*S.P.x - 1.3*S.P.y + off))*(0.7+0.6*Math.random());
+      return Math.round(Math.max(0,x)*10000); });
+    return {m:[0,0,Math.max(0,m2),Math.max(0,m3),0], p:pr, s:sg, index:0, pps: router?75:45, rssi:-45};
+  }
+  return {
+    S, restart(){ T0 = now(); S.hold = false; },
+    data(host){ scene(); const me = host==='demo-a' ? 'A' : 'B';
+      const L = me==='A' ? [{id:'router', ...block('RA')}, {id:'peer', ...block('BA')}] : [{id:'router', ...block('RB')}, {id:'peer', ...block('AB')}];
+      return { name: me==='A'?'Node A':'Node B', ip: host, peer:{name:'', ip: me==='A'?'demo-b':'demo-a', age_ms:100}, links: L }; }
+  };
+})();
+if(DEMO){ holdMin = 0.4; window.SIM = SIM; }
+
+
+// ======================= startup =======================
+let startHost = DEMO ? 'demo-a' : LOCAL ? store.get('h_host', '') : location.host;
+if(LOCAL){ $('hostBox').style.display = ''; $('host').value = startHost; $('host').placeholder = '192.168.x.x';
+  $('bHost').onclick = ()=>{ store.set('h_host', $('host').value.trim()); location.reload(); }; }
+if(startHost) poll(startHost);
+// demo: on first run, records baseline noise automatically (simulated empty room) and starts the scene
+if(DEMO){ $('demoTag').style.display = '';
+  if(!cal){ SIM.S.hold = true; setTimeout(()=>{ calibrate(); setTimeout(()=>SIM.restart(), 16500); }, 800); } }
+setInterval(tick, POLL_MS);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

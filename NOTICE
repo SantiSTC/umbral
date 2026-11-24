@@ -1,0 +1,12 @@
+Umbral
+Copyright (c) 2026 Santiago (SantiSTC)
+
+This project includes code adapted from:
+
+  esp-csi — https://github.com/espressif/esp-csi
+  Copyright Espressif Systems (Shanghai) CO LTD
+  Licensed under the Apache License, Version 2.0
+  (CSI capture setup in firmware/main/app_main.c, based on
+   examples/get-started/csi_recv_router)
+
+Inspired by RuView — https://github.com/ruvnet/RuView

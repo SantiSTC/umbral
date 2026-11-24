@@ -1,0 +1,29 @@
+name: Firmware
+
+on:
+  push:
+    paths: ["firmware/**", "web/index.html", ".github/workflows/firmware.yml"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.4.2
+          target: esp32
+          path: firmware
+          command: >-
+            idf.py build &&
+            cd build &&
+            esptool.py --chip esp32 merge_bin -o umbral_esp32_full_0x0.bin @flash_args
+      - uses: actions/upload-artifact@v4
+        with:
+          name: umbral-firmware
+          path: |
+            firmware/build/umbral_esp32_full_0x0.bin
+            firmware/build/umbral.bin
